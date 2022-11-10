@@ -1,6 +1,7 @@
 package io.gerard.services;
 
 import io.gerard.exceptions.AccountNotFoundException;
+import io.gerard.exceptions.NotEnoughFundsException;
 import io.gerard.exceptions.ZeroOrNegativeAmountException;
 import io.gerard.models.Operation;
 import io.gerard.models.OperationTypes;
@@ -21,7 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class BankAccountServiceShould {
+class BankAccountServiceShould {
     @InjectMocks
     private BankAccountServiceImpl bankAccountService;
 
@@ -77,5 +78,75 @@ public class BankAccountServiceShould {
         final var amount = BigDecimal.valueOf(-10);
 
         assertThrows(ZeroOrNegativeAmountException.class, () -> bankAccountService.deposit(accountId, amount));
+    }
+
+    @Test
+    void makeAWithdrawWithExistingAccountAndPositiveAmountAndEnoughFunds()
+            throws ZeroOrNegativeAmountException, AccountNotFoundException, NotEnoughFundsException {
+        final var accountId = UUID.fromString("f910cf03-e534-4d9d-a473-94ebe3d2cae3");
+        final var amount = BigDecimal.TEN;
+
+        final var lastOperation = new Operation(
+                UUID.randomUUID(),
+                accountId,
+                OperationTypes.DEPOSIT,
+                amount,
+                BigDecimal.valueOf(100),
+                Instant.parse("2022-11-10T12:35:24.00Z")
+        );
+
+        final var expected = new Operation(
+                UUID.randomUUID(),
+                accountId,
+                OperationTypes.WITHDRAWAL,
+                amount,
+                BigDecimal.valueOf(90),
+                Instant.now()
+        );
+
+        when(operationRepository.getLastOperation(accountId)).thenReturn(Optional.of(lastOperation));
+        when(operationRepository.add(any())).thenReturn(expected);
+
+        final var actual = bankAccountService.withdraw(accountId, amount);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void throwNotFoundExceptionWhenWithdrawWithNonExistingAccountAndPositiveAmount() {
+        final var accountId = UUID.fromString("f910cf03-e534-4d9d-a473-94ebe3d2cae3");
+        final var amount = BigDecimal.TEN;
+
+
+        when(operationRepository.getLastOperation(accountId)).thenReturn(Optional.empty());
+
+        assertThrows(AccountNotFoundException.class, () -> bankAccountService.withdraw(accountId, amount));
+    }
+
+    @Test
+    void throwNegAmountExceptionWhenWithdrawWithExistingAccountAndNegativeAmount() {
+        final var accountId = UUID.fromString("f910cf03-e534-4d9d-a473-94ebe3d2cae3");
+        final var amount = BigDecimal.valueOf(-10);
+
+        assertThrows(ZeroOrNegativeAmountException.class, () -> bankAccountService.withdraw(accountId, amount));
+    }
+
+    @Test
+    void throwNotEnoughFundsExceptionWhenWithdrawWithExistingAccountAndAmountGreaterThanBalance() {
+        final var accountId = UUID.fromString("f910cf03-e534-4d9d-a473-94ebe3d2cae3");
+        final var amount = BigDecimal.TEN;
+
+        final var lastOperation = new Operation(
+                UUID.randomUUID(),
+                accountId,
+                OperationTypes.DEPOSIT,
+                amount,
+                BigDecimal.valueOf(5),
+                Instant.parse("2022-11-10T12:35:24.00Z")
+        );
+
+        when(operationRepository.getLastOperation(accountId)).thenReturn(Optional.of(lastOperation));
+
+        assertThrows(NotEnoughFundsException.class, () -> bankAccountService.withdraw(accountId, amount));
     }
 }

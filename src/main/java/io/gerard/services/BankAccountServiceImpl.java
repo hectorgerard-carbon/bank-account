@@ -1,6 +1,7 @@
 package io.gerard.services;
 
 import io.gerard.exceptions.AccountNotFoundException;
+import io.gerard.exceptions.NotEnoughFundsException;
 import io.gerard.exceptions.ZeroOrNegativeAmountException;
 import io.gerard.models.Operation;
 import io.gerard.models.OperationTypes;
@@ -37,6 +38,35 @@ public class BankAccountServiceImpl implements BankAccountService {
                         operationId,
                         accountId,
                         OperationTypes.DEPOSIT,
+                        scaledAmount,
+                        newBalance,
+                        date
+                )
+        );
+    }
+
+    @Override
+    public Operation withdraw(UUID accountId, BigDecimal amount)
+            throws ZeroOrNegativeAmountException, AccountNotFoundException, NotEnoughFundsException {
+
+        if (amount.signum() <= 0) {
+            throw new ZeroOrNegativeAmountException();
+        }
+        final var scaledAmount = amount.setScale(2, RoundingMode.HALF_DOWN);
+        final var date = Instant.now();
+        final var operationId = UUID.randomUUID();
+
+        final var lastBalance = getCurrentBalance(accountId);
+        if (lastBalance.compareTo(amount) < 0) {
+            throw new NotEnoughFundsException();
+        }
+        final var newBalance = lastBalance.subtract(scaledAmount);
+
+        return operationRepository.add(
+                new Operation(
+                        operationId,
+                        accountId,
+                        OperationTypes.WITHDRAWAL,
                         scaledAmount,
                         newBalance,
                         date
