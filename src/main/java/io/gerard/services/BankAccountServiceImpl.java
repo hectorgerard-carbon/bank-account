@@ -3,6 +3,7 @@ package io.gerard.services;
 import io.gerard.exceptions.AccountNotFoundException;
 import io.gerard.exceptions.NotEnoughFundsException;
 import io.gerard.exceptions.ZeroOrNegativeAmountException;
+import io.gerard.models.Account;
 import io.gerard.models.Operation;
 import io.gerard.models.OperationTypes;
 
@@ -13,9 +14,13 @@ import java.util.UUID;
 
 public class BankAccountServiceImpl implements BankAccountService {
     private final OperationRepository operationRepository;
+    private final AccountStatementFormatter accountStatementFormatter;
+    private final StringPrinter stringPrinter;
 
-    public BankAccountServiceImpl(OperationRepository operationRepository) {
+    public BankAccountServiceImpl(OperationRepository operationRepository, AccountStatementFormatter accountStatementFormatter, StringPrinter stringPrinter) {
         this.operationRepository = operationRepository;
+        this.accountStatementFormatter = accountStatementFormatter;
+        this.stringPrinter = stringPrinter;
     }
 
     @Override
@@ -72,6 +77,21 @@ public class BankAccountServiceImpl implements BankAccountService {
                         date
                 )
         );
+    }
+
+    @Override
+    public void printAccountStatement(UUID accountId) {
+        final var operations= operationRepository.getAllOrderByDateDesc(accountId);
+
+        final var mostRecentOperation = operations.stream().findFirst();
+
+        final var actualBalance = mostRecentOperation
+                .map(Operation::newBalance)
+                .orElse(BigDecimal.ZERO);
+
+        final var statement = accountStatementFormatter.format(new Account(accountId, actualBalance, operations));
+
+        stringPrinter.print(statement);
     }
 
     private BigDecimal getCurrentBalance(UUID accountId) throws AccountNotFoundException {

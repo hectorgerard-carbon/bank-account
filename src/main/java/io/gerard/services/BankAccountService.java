@@ -9,7 +9,11 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface BankAccountService {
-    Operation deposit(UUID accountId, BigDecimal amount) throws ZeroOrNegativeAmountException, AccountNotFoundException;
+    Operation deposit(UUID accountId, BigDecimal amount)
+            throws ZeroOrNegativeAmountException, AccountNotFoundException;
 
-    Operation withdraw(UUID accountId, BigDecimal amount) throws ZeroOrNegativeAmountException, AccountNotFoundException, NotEnoughFundsException;
+    Operation withdraw(UUID accountId, BigDecimal amount)
+            throws ZeroOrNegativeAmountException, AccountNotFoundException, NotEnoughFundsException;
+
+    void printAccountStatement(UUID accountId);
 }
