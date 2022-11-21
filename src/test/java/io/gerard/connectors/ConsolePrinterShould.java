@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-class ConsoleStringPrinterShould {
+class ConsolePrinterShould {
 
     private final PrintStream standardOut = System.out;
     private final ByteArrayOutputStream outputStreamCaptor = new ByteArrayOutputStream();
@@ -34,10 +34,10 @@ class ConsoleStringPrinterShould {
                 	your last balance is : 3320.0
                 Operations :\s
                 Date 					Type 		Amount\s
-                29/10/2022 23:30		WITHDRAWAL	30.0
-                15/10/2022 14:05		DEPOSIT		1200.0
-                06/10/2022 19:10		DEPOSIT		50.0
-                02/10/2022 11:59		DEPOSIT		100.0""";
+                2022-10-29T21:30:18		WITHDRAW	30.0
+                2022-10-15T12:05   		DEPOSIT		1200.0
+                2022-10-06T17:10:31		DEPOSIT		50.0
+                2022-10-02T09:59:59		DEPOSIT		100.0""";
 
         sut.print(expected);
 
@@ -45,4 +45,5 @@ class ConsoleStringPrinterShould {
 
         Assertions.assertEquals(expected + System.lineSeparator(), actual);
     }
+
 }

@@ -9,18 +9,30 @@ import io.gerard.models.OperationTypes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public class BankAccountServiceImpl implements BankAccountService {
     private final OperationRepository operationRepository;
     private final AccountStatementFormatter accountStatementFormatter;
     private final StringPrinter stringPrinter;
+    private final Clock clock;
+    private final Supplier<UUID> uuidGenerator;
 
-    public BankAccountServiceImpl(OperationRepository operationRepository, AccountStatementFormatter accountStatementFormatter, StringPrinter stringPrinter) {
+    BankAccountServiceImpl(OperationRepository operationRepository, AccountStatementFormatter accountStatementFormatter,
+                           StringPrinter stringPrinter, Clock clock, Supplier<UUID> uuidGenerator) {
         this.operationRepository = operationRepository;
         this.accountStatementFormatter = accountStatementFormatter;
         this.stringPrinter = stringPrinter;
+        this.clock = clock;
+        this.uuidGenerator = uuidGenerator;
+    }
+
+    public BankAccountServiceImpl(OperationRepository operationRepository,
+                                  AccountStatementFormatter accountStatementFormatter, StringPrinter stringPrinter) {
+        this(operationRepository, accountStatementFormatter, stringPrinter, Clock.systemDefaultZone(), UUID::randomUUID);
     }
 
     @Override
@@ -31,12 +43,12 @@ public class BankAccountServiceImpl implements BankAccountService {
             throw new ZeroOrNegativeAmountException();
         }
         final var scaledAmount = amount.setScale(2, RoundingMode.HALF_DOWN);
-        final var date = Instant.now();
-        final var operationId = UUID.randomUUID();
+        final var date = Instant.now(clock);
 
         final var lastBalance = getCurrentBalance(accountId);
 
         final var newBalance = lastBalance.add(scaledAmount);
+        final var operationId = uuidGenerator.get();
 
         return operationRepository.add(
                 new Operation(
@@ -58,14 +70,14 @@ public class BankAccountServiceImpl implements BankAccountService {
             throw new ZeroOrNegativeAmountException();
         }
         final var scaledAmount = amount.setScale(2, RoundingMode.HALF_DOWN);
-        final var date = Instant.now();
-        final var operationId = UUID.randomUUID();
+        final var date = Instant.now(clock);
 
         final var lastBalance = getCurrentBalance(accountId);
         if (lastBalance.compareTo(amount) < 0) {
             throw new NotEnoughFundsException();
         }
         final var newBalance = lastBalance.subtract(scaledAmount);
+        final var operationId = uuidGenerator.get();
 
         return operationRepository.add(
                 new Operation(
@@ -81,7 +93,7 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     @Override
     public void printAccountStatement(UUID accountId) {
-        final var operations= operationRepository.getAllOrderByDateDesc(accountId);
+        final var operations = operationRepository.getAllOrderByDateDesc(accountId);
 
         final var mostRecentOperation = operations.stream().findFirst();
 
